@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.locatecontrol@0.81.0/dist/L.Control.Locate.min.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
     <title>Document</title>
     <style>
       body {
@@ -33,18 +34,40 @@
     <!-- Leaflet js -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/leaflet.locatecontrol@0.81.0/dist/L.Control.Locate.min.js" charset="utf-8"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
     <script>
       // Map initialization
-      var map = L.map("map").setView([-0.3533938, 109.4735066], 15);
+      var map = L.map("map").setView([-0.055772, 109.348456], 13);
 
       // OSM Layer
-      var osm = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-      });
-      osm.addTo(map);
+      }).addTo(map);
 
-      // Add locate control to the map
-      var lc = L.control.locate().addTo(map);
+      // Custom icons
+      var blueIcon = L.icon({
+        iconUrl: './asset/blue.png', // Replace with actual path to blue icon
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+      });
+
+      var redIcon = L.icon({
+        iconUrl: './asset/red.png', // Replace with actual path to red icon
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+      });
+
+      // Custom markers
+      var userMarker = null;
+      var destinationMarker = L.marker([-0.074503, 109.379936], { icon: redIcon }).addTo(map);
+
+      // Destination waypoint
+      let latLng2 = L.latLng(-0.074503, 109.379936);
+      let wp2 = new L.Routing.Waypoint(latLng2);
 
       // Function to get address from coordinates
       function getAddress(lat, lon) {
@@ -68,12 +91,52 @@
         map.locate({ setView: true, maxZoom: 16 });
       }
 
+      // Function to update route
+      function updateRoute(latLng1) {
+        let wp1 = new L.Routing.Waypoint(latLng1);
+        let routeUs = L.Routing.osrmv1();
+        routeUs.route([wp1, wp2], (err, routes) => {
+          if (!err) {
+            let best = 100000000000000;
+            let bestRoute = 0;
+            for (let i in routes) {
+              if (routes[i].summary.totalDistance < best) {
+                bestRoute = i;
+                best = routes[i].summary.totalDistance;
+              }
+            }
+            console.log("best route", routes[bestRoute]);
+            L.Routing.line(routes[bestRoute], {
+              styles: [
+                {
+                  color: "green",
+                  weight: 8,
+                },
+              ],
+            }).addTo(map);
+          }
+        });
+      }
+
       // Event listener for location found
       map.on("locationfound", function (e) {
         var lat = e.latitude;
         var lon = e.longitude;
+        var latLng1 = L.latLng(lat, lon);
+
+        // Update user marker
+        if (userMarker) {
+          userMarker.setLatLng(latLng1);
+        } else {
+          userMarker = L.marker(latLng1, { icon: blueIcon }).addTo(map);
+        }
+
         getAddress(lat, lon);
+        updateRoute(latLng1);
       });
+
+      // Add locate control to the map
+      var lc = L.control.locate().addTo(map);
 
       // Start locate control to request location update and set location
       lc.start();
