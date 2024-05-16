@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.locatecontrol@0.81.0/dist/L.Control.Locate.min.css" />
+    <title>Document</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+      }
+      #map {
+        width: 100%;
+        height: 100vh;
+      }
+      .address-box {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: white;
+        padding: 10px;
+        border: 1px solid #ccc;
+        z-index: 1000;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="map"></div>
+    <div class="address-box" id="addressBox">Address will appear here</div>
+    <!-- Leaflet js -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/leaflet.locatecontrol@0.81.0/dist/L.Control.Locate.min.js" charset="utf-8"></script>
+    <script>
+      // Map initialization
+      var map = L.map("map").setView([-0.3533938, 109.4735066], 15);
+
+      // OSM Layer
+      var osm = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      });
+      osm.addTo(map);
+
+      // Add locate control to the map
+      var lc = L.control.locate().addTo(map);
+
+      // Function to get address from coordinates
+      function getAddress(lat, lon) {
+        fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`)
+          .then((response) => response.json())
+          .then((data) => {
+            if (data && data.display_name) {
+              var addressBox = document.getElementById("addressBox");
+              addressBox.innerHTML = data.display_name;
+            } else {
+              alert("Address not found");
+            }
+          })
+          .catch((error) => {
+            console.error("Error fetching address:", error);
+          });
+      }
+
+      // Function to locate and update address
+      function updateLocation() {
+        map.locate({ setView: true, maxZoom: 16 });
+      }
+
+      // Event listener for location found
+      map.on("locationfound", function (e) {
+        var lat = e.latitude;
+        var lon = e.longitude;
+        getAddress(lat, lon);
+      });
+
+      // Start locate control to request location update and set location
+      lc.start();
+
+      // Update location every 2 minutes (120000 milliseconds)
+      setInterval(updateLocation, 120000);
+    </script>
+  </body>
+</html>
